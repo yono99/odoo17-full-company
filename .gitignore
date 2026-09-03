@@ -1,0 +1,12 @@
+# Hasil clone repo OCA (bisa di-clone ulang dengan scripts\clone_oca.ps1)
+addons/
+
+# Data lokal Docker
+pgdata/
+odoo-data/
+
+# File sementara
+*.log
+__pycache__/
+*.pyc
+.DS_Store

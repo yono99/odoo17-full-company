@@ -1,0 +1,26 @@
+# Render Blueprint — Odoo 17 + OCA + modul custom (gratis / hobby)
+# Cara pakai: push repo ke GitHub, buka
+#   https://dashboard.render.com/blueprint/new?repo=<URL-REPO>
+# lalu isi secret env (HOST/USER/PASSWORD dari Neon) di dashboard.
+services:
+  - type: web
+    name: odoo17-full-company
+    runtime: docker
+    dockerfilePath: ./Dockerfile.render
+    plan: free
+    region: singapore
+    autoDeploy: true
+    envVars:
+      # Isi dari Neon PostgreSQL (sync: false -> diisi manual di dashboard)
+      - key: HOST
+        sync: false
+      - key: PORT
+        value: "5432"
+      - key: USER
+        sync: false
+      - key: PASSWORD
+        sync: false
+    disk:
+      name: odoo-data
+      mountPath: /var/lib/odoo
+      sizeGB: 1

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="res_config_settings_view_form_l10n_id_payroll" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.l10n_id.payroll</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//form/sheet/notebook" position="inside">
+                <page string="Payroll Indonesia" name="l10n_id_payroll">
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane" />
+                            <div class="o_setting_right_pane">
+                                <label for="l10n_id_bpjs_kesehatan_cap" />
+                                <div class="text-muted">
+                                    Batas maksimum upah untuk iuran BPJS
+                                    Kesehatan (contoh: Rp12.000.000/bulan).
+                                </div>
+                                <div class="content-group">
+                                    <div class="mt16">
+                                        <field name="l10n_id_bpjs_kesehatan_cap" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane" />
+                            <div class="o_setting_right_pane">
+                                <label for="l10n_id_bpjs_tk_cap" />
+                                <div class="text-muted">
+                                    Batas maksimum upah untuk iuran JHT, JP,
+                                    JKK &amp; JKM. Ditetapkan ulang BPJS
+                                    Ketenagakerjaan setiap tahun.
+                                </div>
+                                <div class="content-group">
+                                    <div class="mt16">
+                                        <field name="l10n_id_bpjs_tk_cap" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

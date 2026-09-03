@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo noupdate="1">
+    <!-- ==================== KATEGORI ==================== -->
+    <record id="cat_basic" model="hr.salary.rule.category">
+        <field name="name">Gaji Pokok</field>
+        <field name="code">ID_BASIC</field>
+    </record>
+    <record id="cat_allowance" model="hr.salary.rule.category">
+        <field name="name">Tunjangan</field>
+        <field name="code">ID_ALW</field>
+    </record>
+    <record id="cat_gross" model="hr.salary.rule.category">
+        <field name="name">Penghasilan Bruto</field>
+        <field name="code">ID_GROSS</field>
+    </record>
+    <record id="cat_deduction" model="hr.salary.rule.category">
+        <field name="name">Potongan</field>
+        <field name="code">ID_DED</field>
+    </record>
+    <record id="cat_net" model="hr.salary.rule.category">
+        <field name="name">Gaji Bersih</field>
+        <field name="code">ID_NET</field>
+    </record>
+    <record id="cat_company" model="hr.salary.rule.category">
+        <field name="name">Beban Perusahaan</field>
+        <field name="code">ID_COMP</field>
+    </record>
+
+    <!-- ==================== ATURAN GAJI ==================== -->
+    <!-- Gaji pokok dari kontrak -->
+    <record id="rule_basic" model="hr.salary.rule">
+        <field name="name">Gaji Pokok</field>
+        <field name="sequence" eval="1" />
+        <field name="code">ID_BASIC</field>
+        <field name="category_id" ref="cat_basic" />
+        <field name="condition_select">none</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+result = contract.wage
+        </field>
+    </record>
+
+    <!-- Tunjangan tetap, diisi manual per slip lewat tab Inputs
+         (tipe input: TUNJANGAN_TETAP) -->
+    <record id="rule_allowance" model="hr.salary.rule">
+        <field name="name">Tunjangan Tetap</field>
+        <field name="sequence" eval="2" />
+        <field name="code">ID_TUNJANGAN_TETAP</field>
+        <field name="category_id" ref="cat_allowance" />
+        <field name="condition_select">none</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+result = inputs.TUNJANGAN_TETAP and inputs.TUNJANGAN_TETAP.amount or 0.0
+        </field>
+    </record>
+    <record id="input_tunjangan_tetap" model="hr.rule.input">
+        <field name="name">Tunjangan Tetap</field>
+        <field name="code">TUNJANGAN_TETAP</field>
+        <field name="input_id" ref="rule_allowance" />
+    </record>
+
+    <!-- Penghasilan bruto -->
+    <record id="rule_gross" model="hr.salary.rule">
+        <field name="name">Penghasilan Bruto</field>
+        <field name="sequence" eval="10" />
+        <field name="code">ID_GROSS</field>
+        <field name="category_id" ref="cat_gross" />
+        <field name="condition_select">none</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+result = categories.ID_BASIC + categories.ID_ALW
+        </field>
+    </record>
+
+    <!-- Potongan BPJS (bagian karyawan), bernilai NEGATIF -->
+    <!-- BPJS Kesehatan: 1% karyawan, batas upah dari konfigurasi -->
+    <record id="rule_bpjs_kes_emp" model="hr.salary.rule">
+        <field name="name">BPJS Kesehatan (1% Karyawan)</field>
+        <field name="sequence" eval="20" />
+        <field name="code">ID_BPJS_KES_EMP</field>
+        <field name="category_id" ref="cat_deduction" />
+        <field name="condition_select">none</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+result = -(min(categories.ID_GROSS, payroll.bpjs_kesehatan_cap) * 0.01)
+        </field>
+    </record>
+
+    <!-- JHT: 2% karyawan -->
+    <record id="rule_jht_emp" model="hr.salary.rule">
+        <field name="name">JHT (2% Karyawan)</field>
+        <field name="sequence" eval="21" />
+        <field name="code">ID_JHT_EMP</field>
+        <field name="category_id" ref="cat_deduction" />
+        <field name="condition_select">none</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+result = -(min(categories.ID_GROSS, payroll.bpjs_ketenagakerjaan_cap) * 0.02)
+        </field>
+    </record>
+
+    <!-- JP: 1% karyawan -->
+    <record id="rule_jp_emp" model="hr.salary.rule">
+        <field name="name">JP (1% Karyawan)</field>
+        <field name="sequence" eval="22" />
+        <field name="code">ID_JP_EMP</field>
+        <field name="category_id" ref="cat_deduction" />
+        <field name="condition_select">none</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+result = -(min(categories.ID_GROSS, payroll.bpjs_ketenagakerjaan_cap) * 0.01)
+        </field>
+    </record>
+
+    <!-- PPh 21 Pasal 21 metode tahunan (annualized), belum TER -->
+    <record id="rule_pph21" model="hr.salary.rule">
+        <field name="name">PPh 21</field>
+        <field name="sequence" eval="30" />
+        <field name="code">ID_PPH21</field>
+        <field name="category_id" ref="cat_deduction" />
+        <field name="condition_select">none</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+# Metode: penghasilan bruto setahun - iuran BPJS (bagian karyawan) setahun
+#         - PTKP  ->  PKP  ->  tarif progresif UU HPP (5% s.d. 35%)
+# CATATAN: v1 ini BELUM memakai Tarif Efektif Rata-rata (TER) 2024.
+gross = categories.ID_GROSS
+cap_kes = payroll.bpjs_kesehatan_cap
+cap_tk = payroll.bpjs_ketenagakerjaan_cap
+bpjs_kes_emp = min(gross, cap_kes) * 0.01
+bpjs_jht_emp = min(gross, cap_tk) * 0.02
+bpjs_jp_emp = min(gross, cap_tk) * 0.01
+netto_setahun = (gross - bpjs_kes_emp - bpjs_jht_emp - bpjs_jp_emp) * 12.0
+ptkp_map = {
+    'TK0': 54000000.0, 'TK1': 58500000.0, 'TK2': 63000000.0, 'TK3': 67500000.0,
+    'K0': 58500000.0, 'K1': 63000000.0, 'K2': 67500000.0, 'K3': 72000000.0,
+}
+ptkp = ptkp_map.get(employee.l10n_id_ptkp_status or 'TK0', 54000000.0)
+pkp = max(netto_setahun - ptkp, 0.0)
+# Lapisan tarif: 5% s.d. 60jt, 15% s.d. 250jt, 25% s.d. 500jt, 30% s.d. 5M, 35% di atasnya
+brackets = (
+    (60000000.0, 0.05),
+    (250000000.0, 0.15),
+    (500000000.0, 0.25),
+    (5000000000.0, 0.30),
+)
+pph21_setahun = 0.0
+batas_sebelumnya = 0.0
+for batas, tarif in brackets:
+    if pkp > batas_sebelumnya:
+        pph21_setahun += (min(pkp, batas) - batas_sebelumnya) * tarif
+        batas_sebelumnya = batas
+    else:
+        break
+if pkp > 5000000000.0:
+    pph21_setahun += (pkp - 5000000000.0) * 0.35
+# Tanpa NPWP: PPh 21 lebih tinggi 20%
+if employee.l10n_id_npwp:
+    pengali = 1.0
+else:
+    pengali = 1.2
+result = -(pph21_setahun * pengali / 12.0)
+        </field>
+    </record>
+
+    <!-- ============ IURAN PERUSAHAAN (informasi, tidak mengurangi gaji bersih) ============ -->
+    <record id="rule_bpjs_kes_co" model="hr.salary.rule">
+        <field name="name">BPJS Kesehatan (4% Perusahaan)</field>
+        <field name="sequence" eval="40" />
+        <field name="code">ID_BPJS_KES_CO</field>
+        <field name="category_id" ref="cat_company" />
+        <field name="appears_on_payslip" eval="False" />
+        <field name="condition_select">none</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+result = min(categories.ID_GROSS, payroll.bpjs_kesehatan_cap) * 0.04
+        </field>
+    </record>
+    <record id="rule_jht_co" model="hr.salary.rule">
+        <field name="name">JHT (3.7% Perusahaan)</field>
+        <field name="sequence" eval="41" />
+        <field name="code">ID_JHT_CO</field>
+        <field name="category_id" ref="cat_company" />
+        <field name="appears_on_payslip" eval="False" />
+        <field name="condition_select">none</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+result = min(categories.ID_GROSS, payroll.bpjs_ketenagakerjaan_cap) * 0.037
+        </field>
+    </record>
+    <record id="rule_jp_co" model="hr.salary.rule">
+        <field name="name">JP (2% Perusahaan)</field>
+        <field name="sequence" eval="42" />
+        <field name="code">ID_JP_CO</field>
+        <field name="category_id" ref="cat_company" />
+        <field name="appears_on_payslip" eval="False" />
+        <field name="condition_select">none</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+result = min(categories.ID_GROSS, payroll.bpjs_ketenagakerjaan_cap) * 0.02
+        </field>
+    </record>
+    <record id="rule_jkk_co" model="hr.salary.rule">
+        <field name="name">JKK (Perusahaan)</field>
+        <field name="sequence" eval="43" />
+        <field name="code">ID_JKK_CO</field>
+        <field name="category_id" ref="cat_company" />
+        <field name="appears_on_payslip" eval="False" />
+        <field name="condition_select">none</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+result = min(categories.ID_GROSS, payroll.bpjs_ketenagakerjaan_cap) \
+    * employee.l10n_id_jkk_rate / 100.0
+        </field>
+    </record>
+    <record id="rule_jkm_co" model="hr.salary.rule">
+        <field name="name">JKM (0.3% Perusahaan)</field>
+        <field name="sequence" eval="44" />
+        <field name="code">ID_JKM_CO</field>
+        <field name="category_id" ref="cat_company" />
+        <field name="appears_on_payslip" eval="False" />
+        <field name="condition_select">none</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+result = min(categories.ID_GROSS, payroll.bpjs_ketenagakerjaan_cap) * 0.003
+        </field>
+    </record>
+
+    <!-- Gaji bersih = bruto + potongan (potongan bernilai negatif) -->
+    <record id="rule_net" model="hr.salary.rule">
+        <field name="name">Gaji Bersih</field>
+        <field name="sequence" eval="100" />
+        <field name="code">ID_NET</field>
+        <field name="category_id" ref="cat_net" />
+        <field name="condition_select">none</field>
+        <field name="amount_select">code</field>
+        <field name="amount_python_compute">
+result = categories.ID_GROSS + categories.ID_DED
+        </field>
+    </record>
+
+    <!-- ==================== STRUKTUR GAJI ==================== -->
+    <record id="structure_id_monthly" model="hr.payroll.structure">
+        <field name="name">Struktur Gaji Bulanan Indonesia</field>
+        <field name="code">ID_MONTHLY</field>
+        <field name="company_id" ref="base.main_company" />
+        <field
+            name="rule_ids"
+            eval="[(6, 0, [
+                ref('rule_basic'),
+                ref('rule_allowance'),
+                ref('rule_gross'),
+                ref('rule_bpjs_kes_emp'),
+                ref('rule_jht_emp'),
+                ref('rule_jp_emp'),
+                ref('rule_pph21'),
+                ref('rule_bpjs_kes_co'),
+                ref('rule_jht_co'),
+                ref('rule_jp_co'),
+                ref('rule_jkk_co'),
+                ref('rule_jkm_co'),
+                ref('rule_net'),
+            ])]"
+        />
+    </record>
+</odoo>
