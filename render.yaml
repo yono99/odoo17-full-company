@@ -24,3 +24,16 @@ services:
       name: odoo-data
       mountPath: /var/lib/odoo
       sizeGB: 1
+
+  # Anti-tidur: ping service tiap 10 menit agar tidak spin-down (plan free)
+  - type: cron
+    name: odoo17-keepalive
+    runtime: python
+    plan: free
+    region: singapore
+    schedule: "*/10 * * * *"
+    buildCommand: "true"
+    startCommand: "python scripts/keepalive.py"
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
