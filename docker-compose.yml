@@ -1,6 +1,8 @@
 services:
   web:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.local
     image: odoo17-full-company:17.0
     depends_on:
       - db

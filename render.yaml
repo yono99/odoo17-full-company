@@ -6,7 +6,7 @@ services:
   - type: web
     name: odoo17-full-company
     runtime: docker
-    dockerfilePath: ./Dockerfile.render
+    dockerfilePath: ./Dockerfile
     plan: free
     region: singapore
     autoDeploy: true
