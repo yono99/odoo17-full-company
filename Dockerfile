@@ -18,7 +18,7 @@ RUN pip install --no-cache-dir \
     unidecode \
     phonenumbers \
     python-barcode \
-    stdnum \
+    python-stdnum \
     vobject \
     num2words \
     openpyxl
