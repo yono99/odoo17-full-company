@@ -47,6 +47,21 @@ if [ -n "$DB_HOST" ]; then
   # JANGAN lewat /entrypoint.sh resmi — dia selalu menambahkan
   # --db_host default 'db' SETELAH argumen kita dan menimpanya.
   echo "==> DB eksternal: ${DB_HOST}:${DB_PORT} (user: ${DB_USER})"
+
+  # Inisialisasi database sekali (bypass web db manager):
+  # butuh env INIT_DB=<nama-db> dan database kosong sudah dibuat manual.
+  if [ -n "$INIT_DB" ]; then
+    echo "==> Inisialisasi database '$INIT_DB' (-i base --stop-after-init) ..."
+    odoo \
+      --config=/etc/odoo/odoo.conf \
+      --addons-path="$ADDONS_PATH" \
+      --db_host="$DB_HOST" --db_port="$DB_PORT" \
+      --db_user="$DB_USER" --db_password="$DB_PASS" \
+      --db_sslmode=require \
+      --http-port=1 \
+      -d "$INIT_DB" -i base --stop-after-init || echo "==> init selesai (atau sudah terinisialisasi)"
+  fi
+
   exec odoo \
     --config=/etc/odoo/odoo.conf \
     --addons-path="$ADDONS_PATH" \
