@@ -27,21 +27,38 @@ done
 echo "==> Odoo addons_path: $ADDONS_PATH"
 
 RENDER_PORT="${PORT:-}"
-
-# Cloud (Render): kredensial DB dikirim lewat env NEON_*.
-# Env HOST/PORT/USER/PASSWORD sengaja TIDAK dipakai karena entrypoint resmi
-# image odoo memetakannya ke db_* dan Render memakai PORT untuk port HTTP.
-DB_ARGS=""
-if [ -n "$NEON_HOST" ]; then
-  DB_ARGS="--db_host=$NEON_HOST --db_port=${NEON_PORT:-5432} --db_user=${NEON_USER:-odoo} --db_password=$NEON_PASSWORD"
-  # Netralkan env yang dibaca entrypoint resmi agar tidak dobel
-  unset HOST PORT USER PASSWORD
-fi
-
-# Render: service harus mendengarkan di port $PORT (bukan 8069)
 HTTP_ARGS=""
 if [ -n "$RENDER_PORT" ]; then
   HTTP_ARGS="--http-port=$RENDER_PORT"
 fi
 
-exec /entrypoint.sh --addons-path="$ADDONS_PATH" $DB_ARGS $HTTP_ARGS "$@"
+# Buang argumen CMD default image ("odoo") agar tidak dobel
+if [ "$1" = "odoo" ]; then
+  shift
+fi
+
+DB_HOST="${NEON_HOST:-${HOST:-}}"
+DB_PORT="${NEON_PORT:-5432}"
+DB_USER="${NEON_USER:-${USER:-odoo}}"
+DB_PASS="${NEON_PASSWORD:-${PASSWORD:-}}"
+
+if [ -n "$DB_HOST" ]; then
+  # Cloud (Render): jalankan odoo LANGSUNG dengan argumen db eksplisit.
+  # JANGAN lewat /entrypoint.sh resmi — dia selalu menambahkan
+  # --db_host default 'db' SETELAH argumen kita dan menimpanya.
+  echo "==> DB eksternal: ${DB_HOST}:${DB_PORT} (user: ${DB_USER})"
+  exec odoo \
+    --config=/etc/odoo/odoo.conf \
+    --addons-path="$ADDONS_PATH" \
+    --db_host="$DB_HOST" \
+    --db_port="$DB_PORT" \
+    --db_user="$DB_USER" \
+    --db_password="$DB_PASS" \
+    --db_sslmode=require \
+    $HTTP_ARGS "$@"
+fi
+
+# Lokal (docker compose): entrypoint resmi aman dipakai —
+# default HOST='db' cocok dengan nama service postgres di compose.
+echo "==> DB lokal (docker compose), pakai entrypoint resmi"
+exec /entrypoint.sh --addons-path="$ADDONS_PATH" $HTTP_ARGS "$@"

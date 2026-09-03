@@ -37,8 +37,10 @@ COPY config/odoo.render.conf /etc/odoo/odoo.conf
 # Modul custom (termasuk l10n_id_hr_payroll)
 COPY custom-addons /opt/custom-addons
 
-# Pastikan semua bisa dibaca proses odoo (user odoo)
-RUN chown -R odoo:odoo /opt/odoo-addons /opt/custom-addons
+# Pastikan semua bisa dibaca/ditulis proses odoo (user odoo),
+# termasuk data_dir untuk disk Render
+RUN chown -R odoo:odoo /opt/odoo-addons /opt/custom-addons \
+    && mkdir -p /var/lib/odoo && chown -R odoo:odoo /var/lib/odoo
 
 USER odoo
 
